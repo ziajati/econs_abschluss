@@ -315,9 +315,12 @@ print(p_breaks)
 
 # Bereinigte Daten mit Taylor-Regel Variablen speichern
 final_data <- data %>%
-  select(date, interest_rate, inflation, inflation_target, inflation_gap, output_gap_interpolated) %>%
+  mutate(
+    # date-Spalte in yearmon umwandeln
+    datum = as.yearmon(date, format = "%Y-%m")
+  ) %>%
+  select(datum, interest_rate, inflation, inflation_target, inflation_gap, output_gap_interpolated) %>%
   rename(
-    datum = date,
     ezb_leitzins = interest_rate,
     hicp_inflation = inflation,
     ziel_inflation = inflation_target,
