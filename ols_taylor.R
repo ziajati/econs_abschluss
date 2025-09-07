@@ -4,6 +4,8 @@ library(lmtest)     # bptest, coeftest
 library(sandwich)   # robuste SE
 library(car)        # VIF
 library(tseries)    # Jarque-Bera
+library(gt)
+library(broom)
 
 # 1) Daten laden & Index sauber setzen
 df <- read.csv("taylor_rule_interpolated.csv", stringsAsFactors = FALSE)
@@ -11,7 +13,123 @@ df$datum <- as.yearmon(df$datum, format = "%Y-%m")
 
 # 2) OLS: Basismodell (statische Taylor-Regel)
 model_ols <- lm(ezb_leitzins ~ inflationsabweichung + output_gap, data = df)
-summary(model_ols)
+sm = summary(model_ols)
+print(sm)
+
+# Koefﬁzienten-Tabelle vorbereiten
+coef_df <- as.data.frame(sm$coefficients)
+coef_df$Variable <- rownames(coef_df)
+coef_df$Interpretation <- ifelse(coef_df$`Pr(>|t|)` <= 0.05, "signifikant", "nicht signifikant")
+
+# Spaltenreihenfolge anpassen
+coef_df <- coef_df[, c("Variable", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "Interpretation")]
+
+# gt-Tabelle erzeugen
+gt(coef_df) %>%
+  tab_header(title = "Regressionskoeffizienten Modell 1") %>%
+  cols_label(
+    Variable = "Variable",
+    Estimate = "Schätzwert",
+    `Std. Error` = "Standardfehler",
+    `t value` = "t-Wert",
+    `Pr(>|t|)` = "p-Wert",
+    Interpretation = "Interpretation (α = 0,05)"
+  ) %>%
+  fmt_number(
+    columns = c(Estimate, `Std. Error`, `t value`, `Pr(>|t|)`),
+    decimals = 2
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  )
+
+
+# Einzelwerte berechnen
+r2 <- sm$r.squared
+adj_r2 <- sm$adj.r.squared
+sigma <- sm$sigma
+df_model <- sm$df[1]
+df_resid <- sm$df[2]
+fstat <- sm$fstatistic
+f_p <- 1 - pf(fstat["value"], df1 = fstat["numdf"], df2 = fstat["dendf"])
+
+# DataFrame für Zusammenfassung
+info_df <- data.frame(
+  Kennzahl = c("R²", "Adjustiertes R²", "F-Statistik", "p-Wert (F)", "df Modell", "df Residuen", "sigma"),
+  Wert = c(round(r2, 4), round(adj_r2, 4), round(fstat["value"], 4), round(f_p, 4), df_model, df_resid, round(sigma, 4))
+)
+
+# gt-Tabelle
+gt(info_df) %>%
+  tab_header(title = "Modellkennzahlen Modell 1") %>%
+  fmt_number(columns = "Wert", decimals = 2) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  )
+
+
+# 1) Daten laden & Index sauber setzen
+df_spline <- read.csv("taylor_rule_interpolated_spline.csv", stringsAsFactors = FALSE)
+df_spline$datum <- as.yearmon(df$datum, format = "%Y-%m")
+
+# 2) OLS: Basismodell (statische Taylor-Regel)
+model_ols_spline <- lm(ezb_leitzins ~ inflationsabweichung + output_gap, data = df_spline)
+sm = summary(model_ols_spline)
+print(sm)
+
+# Koefﬁzienten-Tabelle vorbereiten
+coef_df <- as.data.frame(sm$coefficients)
+coef_df$Variable <- rownames(coef_df)
+coef_df$Interpretation <- ifelse(coef_df$`Pr(>|t|)` <= 0.05, "signifikant", "nicht signifikant")
+
+# Spaltenreihenfolge anpassen
+coef_df <- coef_df[, c("Variable", "Estimate", "Std. Error", "t value", "Pr(>|t|)", "Interpretation")]
+
+# gt-Tabelle erzeugen
+gt(coef_df) %>%
+  tab_header(title = "Regressionskoeffizienten Modell 2") %>%
+  cols_label(
+    Variable = "Variable",
+    Estimate = "Schätzwert",
+    `Std. Error` = "Standardfehler",
+    `t value` = "t-Wert",
+    `Pr(>|t|)` = "p-Wert",
+    Interpretation = "Interpretation (α = 0,05)"
+  ) %>%
+  fmt_number(
+    columns = c(Estimate, `Std. Error`, `t value`, `Pr(>|t|)`),
+    decimals = 2
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  )
+
+# Einzelwerte berechnen
+r2 <- sm$r.squared
+adj_r2 <- sm$adj.r.squared
+sigma <- sm$sigma
+df_model <- sm$df[1]
+df_resid <- sm$df[2]
+fstat <- sm$fstatistic
+f_p <- 1 - pf(fstat["value"], df1 = fstat["numdf"], df2 = fstat["dendf"])
+
+# DataFrame für Zusammenfassung
+info_df <- data.frame(
+  Kennzahl = c("R²", "Adjustiertes R²", "F-Statistik", "p-Wert (F)", "df Modell", "df Residuen", "sigma"),
+  Wert = c(round(r2, 4), round(adj_r2, 4), round(fstat["value"], 4), round(f_p, 4), df_model, df_resid, round(sigma, 4))
+)
+
+# gt-Tabelle
+gt(info_df) %>%
+  tab_header(title = "Modellkennzahlen Modell 2") %>%
+  fmt_number(columns = "Wert", decimals = 2) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  )
 
 # ===== Standard-Checks =====
 
@@ -19,11 +137,13 @@ summary(model_ols)
 bp <- bptest(model_ols)  # Breusch-Pagan
 bp
 
-# (optional White-Test-Variante mit Quadraten + Interaktion)
-white <- bptest(model_ols, ~ inflationsabweichung + output_gap +
-                  I(inflationsabweichung^2) + I(output_gap^2) +
-                  inflationsabweichung:output_gap)
-white
+# Goldfeld-Quandt Test
+gq_test <- gqtest(model_ols, order.by = df$inflationsabweichung)
+print(gq_test)
+
+# White Test (robuste Version des BP-Tests)
+white_test <- bptest(model_ols, ~ inflationsabweichung * output_gap + I(inflationsabweichung^2) + I(output_gap^2), data = df)
+print(white_test)
 
 # Robuste (HC1) SE anzeigen – nur zur Einordnung, falls BP/White signifikant
 coeftest(model_ols, vcov = vcovHC(model_ols, type = "HC1"))
@@ -50,10 +170,10 @@ library(stats)    # acf, pacf, Box.test
 dwtest(model_ols)
 # DW = 0.02 (!!), p < 0.001 → extrem starke positive Autokorrelation.
 
-# 2) Breusch–Godfrey (höhere Ordnungen; passe 'order' an, z.B. 4, 8, 12)
-bgtest(model_ols, order = 4)
+# 2) Breusch–Godfrey 
+bgtest(model_ols, order = 3)
 # LM test = 272.94, df = 4, p-value < 2.2e-16 -> Autokorrelation
-bgtest(model_ols, order = 8)
+bgtest(model_ols, order = 6)
 # LM test = 273.01, df = 8, p-value < 2.2e-16
 bgtest(model_ols, order = 12)
 # LM test = 273.07, df = 12, p-value < 2.2e-16
