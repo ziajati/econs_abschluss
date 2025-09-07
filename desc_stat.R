@@ -76,6 +76,9 @@ data$output_gap_cubic <- na.approx(data$output_gap, method = "linear", na.rm = F
 # Für die Hauptanalyse verwenden wir die lineare Interpolation
 data$output_gap_interpolated <- data$output_gap_linear
 
+# Spline Interpolation für ein zweites OLS Modell
+data$output_gap_interpolated <- data$output_gap_linear
+
 # Interpolationsergebnisse visualisieren
 p_interpolation <- ggplot(data, aes(x = date)) +
   geom_point(aes(y = output_gap), color = "red", size = 3, alpha = 0.7, na.rm = TRUE) +
@@ -328,7 +331,7 @@ final_data <- data %>%
     output_gap = output_gap_interpolated
   )
 
-write.csv(final_data, "taylor_rule_interpolated.csv", row.names = FALSE)
+write.csv(final_data, "taylor_rule_interpolated_spline.csv", row.names = FALSE)
 
 cat("\n=== ZUSAMMENFASSUNG ===\n")
 cat("✓ Output Gap erfolgreich interpoliert (lineare Methode)\n")

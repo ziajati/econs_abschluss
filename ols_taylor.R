@@ -192,11 +192,48 @@ par(mfrow = c(1,1))
 # (z.B. 12 Lags für Monatsdaten ~ 1 Jahr)
 Box.test(res, lag = 12, type = "Ljung-Box")
 
+library(tseries)   # für den ADF-Test
 library(dynlm)
 # ===== Daten laden & Zeitachse setzen =====
 df <- read.csv("taylor_rule_interpolated.csv", stringsAsFactors = FALSE)
-
 df_ts <- zoo(df[, c("ezb_leitzins","inflationsabweichung","output_gap")], order.by = df$datum)
+
+# ===== Stationarität testen (ADF-Test) =====
+adf.test(na.omit(df_ts$ezb_leitzins))          # Leitzins
+adf.test(na.omit(df_ts$inflationsabweichung))  # Inflationsabweichung
+adf.test(na.omit(df_ts$output_gap))            # Output-Gap
+
+
+library(dynlm)
+# Taylor in Levels + AR(1) auf der abhängigen
+model_dyn1 <- dynlm(ezb_leitzins ~ inflationsabweichung + output_gap +
+                         L(ezb_leitzins, 1),
+                       data = df_ts)
+summary(model_dyn1)
+
+model_dyn2 <- dynlm(ezb_leitzins ~ inflationsabweichung + output_gap + L(ezb_leitzins, 2), data = df_ts)
+model_dyn3 <- dynlm(ezb_leitzins ~ inflationsabweichung + output_gap + L(ezb_leitzins, 3), data = df_ts)
+model_dyn4 <- dynlm(ezb_leitzins ~ inflationsabweichung + output_gap + L(ezb_leitzins, 4), data = df_ts)
+model_dyn23 <- dynlm(ezb_leitzins ~ inflationsabweichung + output_gap + L(ezb_leitzins, 23), data = df_ts)
+
+# Modelle vergleichen
+AIC(model_dyn1, model_dyn2, model_dyn3, model_dyn4, model_dyn23)
+BIC(model_dyn1, model_dyn2, model_dyn3, model_dyn4, model_dyn23)
+
+# 2. Residuenanalyse
+bgtest(model_dyn1, order = 6)           # Autokorrelation
+Box.test(resid(model_dyn1), lag = 12, type = "Ljung-Box")
+bptest(model_dyn1)                      # Heteroskedastizität (Breusch-Pagan)
+jarque.bera.test(resid(model_dyn1))     # Normalität
+
+# 3. Multikollinearität
+vif(model_dyn1)
+
+# 5. Robuste Standardfehler
+coeftest(model_dyn1, vcov = NeweyWest(model_dyn1, lag = 6, prewhite = FALSE))
+
+
+# ALTE ANALYSE: Aufgrund falscher Ergebnisse differenziert
 # ===== Dynamisches Δ-Modell (Taylor-Regel in Änderungen) =====
 # Δ i_t = a + b1*infl_gap_t + b2*output_gap_t + phi*Δ i_{t-1} + u_t
 model_dyn <- dynlm(diff(ezb_leitzins) ~ inflationsabweichung + output_gap +
