@@ -2,7 +2,6 @@
 # Deskriptive Analyse – EZB & Taylor-Regel
 # ---------------------------------------------
 # Voraussetzungen:
-# install.packages(c("tidyverse","lubridate","gt","scales","patchwork","zoo"))
 
 library(tidyverse)
 library(lubridate)
@@ -12,7 +11,6 @@ library(patchwork)
 library(zoo)
 
 # ---- 1) Daten laden & vorbereiten ----
-# Pfad ggf. anpassen:
 df_raw <- read_csv("taylor_rule_interpolated.csv",
                    show_col_types = FALSE)
 

@@ -1,21 +1,18 @@
 # ==============================================================================
 # EZB Geldpolitik und Taylor-Regel: Interpolation und Deskriptive Analyse
 # ==============================================================================
-
-# Pakete laden und installieren falls nötig
-required_packages <- c("readr", "dplyr", "tidyr", "lubridate", "ggplot2", 
-                       "gridExtra", "corrplot", "forecast", "zoo", 
-                       "moments", "tseries", "psych")
-
-# Pakete installieren und laden
-for(pkg in required_packages) {
-  if (!require(pkg, character.only = TRUE, quietly = TRUE)) {
-    cat(paste("Installiere Paket:", pkg, "\n"))
-    install.packages(pkg, dependencies = TRUE)
-    library(pkg, character.only = TRUE)
-  }
-}
-
+library(readr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library(gridExtra)
+library(corrplot)
+library(forecast)
+library(zoo)
+library(moments)
+library(tseries)
+library(psych)
 # ==============================================================================
 # 1. DATEN EINLESEN UND VORBEREITEN
 # ==============================================================================
@@ -68,10 +65,6 @@ data$output_gap_linear <- na.approx(data$output_gap, na.rm = FALSE)
 
 # Methode 2: Spline-Interpolation
 data$output_gap_spline <- na.spline(data$output_gap, na.rm = FALSE)
-
-# Methode 3: Kubische Interpolation mit zoo
-data$output_gap_cubic <- na.fill(data$output_gap, "extend")
-data$output_gap_cubic <- na.approx(data$output_gap, method = "linear", na.rm = FALSE)
 
 # Für die Hauptanalyse verwenden wir die lineare Interpolation
 data$output_gap_interpolated <- data$output_gap_linear
